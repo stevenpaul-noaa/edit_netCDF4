@@ -2,6 +2,8 @@ import netCDF4
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
+# New import for autocomplete
+from ttkwidgets.autocomplete import AutocompleteEntry
 
 class NetCDFGlobalAttributeEditor:
     def __init__(self, master):
@@ -39,7 +41,8 @@ class NetCDFGlobalAttributeEditor:
         self.edit_frame.pack(fill=tk.X, padx=10, pady=5)
 
         tk.Label(self.edit_frame, text="Attribute Name:").grid(row=0, column=0, sticky="w", pady=2)
-        self.attr_name_entry = tk.Entry(self.edit_frame, width=40)
+        # Use AutocompleteEntry for the attribute name field
+        self.attr_name_entry = AutocompleteEntry(self.edit_frame, width=40, completevalues=[])
         self.attr_name_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
         self.attr_name_entry.bind("<Return>", self.get_current_value_from_entry) # Bind Enter key
 
@@ -119,6 +122,8 @@ class NetCDFGlobalAttributeEditor:
             self.file_path_display.delete(0, tk.END)
             self.file_path_display.config(state='readonly')
             self.clear_attributes_display()
+            # Clear autocomplete list if file opening fails
+            self.attr_name_entry.set_completion_list([])
 
     def load_global_attributes(self):
         self.global_attributes = self.nc_file.__dict__
@@ -129,6 +134,8 @@ class NetCDFGlobalAttributeEditor:
             self.attr_text_area.insert(tk.END, "No global attributes found in this file.")
             self.attr_text_area.config(state='disabled')
             self.update_status("No global attributes found.")
+            # Clear autocomplete list if no attributes
+            self.attr_name_entry.set_completion_list([])
             return
 
         self.attr_text_area.config(state='normal')
@@ -138,6 +145,9 @@ class NetCDFGlobalAttributeEditor:
         self.attr_text_area.insert(tk.END, attr_str)
         self.attr_text_area.config(state='disabled')
         self.update_status(f"Loaded {len(self.global_attributes)} global attributes.")
+
+        # Update the autocomplete values for the attribute name entry
+        self.attr_name_entry.set_completion_list(list(self.global_attributes.keys()))
 
     def clear_attributes_display(self):
         self.attr_text_area.config(state='normal')
@@ -215,7 +225,7 @@ class NetCDFGlobalAttributeEditor:
 
             setattr(self.nc_file, attr_name, new_value)
             self.global_attributes[attr_name] = new_value # Update local cache
-            self.load_global_attributes() # Refresh display
+            self.load_global_attributes() # Refresh display (this will also update autocomplete list)
             
             action_verb = "added" if is_new_attribute else "updated"
             self.update_status(f"Successfully {action_verb} '{attr_name}' to '{new_value}'.")
@@ -228,7 +238,7 @@ class NetCDFGlobalAttributeEditor:
             )
             setattr(self.nc_file, attr_name, new_value_str)
             self.global_attributes[attr_name] = new_value_str # Update local cache
-            self.load_global_attributes() # Refresh display
+            self.load_global_attributes() # Refresh display (this will also update autocomplete list)
             self.update_status(f"Stored '{attr_name}' as string: '{new_value_str}'.")
 
         except Exception as e:
